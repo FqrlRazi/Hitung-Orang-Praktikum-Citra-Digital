@@ -1,14 +1,11 @@
-from pathlib import Path
-
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 
 from .image_processing import analyze_image, generate_report_pdf
 
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
-FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 
 app = FastAPI(
     title="Hitung Orang dari Citra",
@@ -99,13 +96,8 @@ async def download_report_pdf(
     )
 
 
-@app.get("/", include_in_schema=False)
-def serve_frontend() -> FileResponse:
-    return FileResponse(FRONTEND_DIR / "index.html")
-
-
 app.mount(
     "/",
-    StaticFiles(directory=FRONTEND_DIR),
+    StaticFiles(directory="frontend", html=True),
     name="frontend-assets",
 )

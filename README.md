@@ -88,3 +88,7 @@ Project menggunakan konfigurasi FastAPI pada `pyproject.toml`:
 [tool.vercel]
 entrypoint = "backend.app.main:app"
 ```
+
+Dependency runtime juga dicantumkan pada bagian `[project].dependencies` di
+file tersebut agar Vercel memasang FastAPI, OpenCV, NumPy, dan ReportLab saat
+build. Frontend disajikan dari mount `StaticFiles` dengan `html=True`.
