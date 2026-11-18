@@ -1,0 +1,49 @@
+:root {
+  color-scheme: light;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.dropzone.drag-over {
+  border-color: #1d5948;
+  background: rgb(29 89 72 / 7%);
+}
+
+input[type="range"] {
+  cursor: pointer;
+}
+
+.result-tab {
+  border-color: rgb(0 0 0 / 8%);
+  background: white;
+  color: rgb(0 0 0 / 55%);
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.result-tab[aria-pressed="true"] {
+  border-color: #1d5948;
+  background: #1d5948;
+  color: white;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
