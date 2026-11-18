@@ -79,3 +79,12 @@ Setelah analisis berhasil, tombol **Unduh PDF** membuat file PDF berisi:
 - metode segmentasi dan deteksi;
 - warna latar perkiraan;
 - tabel nomor objek, bentuk kontur, ukuran, rasio aspek, dan sumber bentuk.
+
+## Deployment Vercel
+
+Project menggunakan konfigurasi FastAPI pada `pyproject.toml`:
+
+```toml
+[tool.vercel]
+entrypoint = "backend.app.main:app"
+```
