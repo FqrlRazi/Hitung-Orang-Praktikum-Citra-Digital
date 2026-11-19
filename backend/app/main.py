@@ -1,16 +1,17 @@
 import base64
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse, Response
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .image_processing import AnalysisResult, analyze_image, generate_report_pdf
 from .history_store import (
-    HISTORY_DIR,
+    HistoryStorageConfigurationError,
     get_previous_record,
     get_record,
     list_records,
+    read_record_image,
     save_record,
 )
 
@@ -22,6 +23,14 @@ app = FastAPI(
     description="Demo segmentasi latar terkendali dan analisis kontur.",
     version="1.0.0",
 )
+
+
+@app.exception_handler(HistoryStorageConfigurationError)
+async def history_storage_configuration_error(
+    request: Request,
+    error: HistoryStorageConfigurationError,
+) -> JSONResponse:
+    return JSONResponse(status_code=503, content={"detail": str(error)})
 
 
 @app.get("/api/health")
@@ -53,15 +62,12 @@ async def analyze_upload(
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 
-    record = save_record(file.filename or "gambar-tanpa-nama", result, image_bytes)
+    record = await save_record(file.filename or "gambar-tanpa-nama", result, image_bytes)
 
     return {
         "count": result.count,
         "detection_method": result.detection_method,
         "segmentation_method": result.segmentation_method,
-        "annotated_image": result.annotated_image,
-        "mask_image": result.mask_image,
-        "face_mask_image": result.face_mask_image,
         "image_width": result.image_width,
         "image_height": result.image_height,
         "background_color": result.background_color,
@@ -111,39 +117,32 @@ async def download_report_pdf(
 
 
 @app.get("/api/history")
-def history_list(limit: int = 100) -> dict:
-    return {"records": list_records(limit)}
+async def history_list(limit: int = 100) -> dict:
+    return {"records": await list_records(limit)}
 
 
 @app.get("/api/history/{record_id}")
-def history_detail(record_id: str) -> dict:
-    record = get_record(record_id)
+async def history_detail(record_id: str) -> dict:
+    record = await get_record(record_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Riwayat tidak ditemukan.")
     return record
 
 
 @app.get("/api/history/{record_id}/report/pdf")
-def download_history_report_pdf(record_id: str) -> Response:
-    record = get_record(record_id)
+async def download_history_report_pdf(record_id: str) -> Response:
+    record = await get_record(record_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Riwayat tidak ditemukan.")
 
     image_data = {}
     for image_name in ("annotated", "mask", "face_mask"):
-        file_name = record.get("files", {}).get(image_name)
-        if not file_name:
-            raise HTTPException(status_code=404, detail="Data gambar laporan tidak tersedia.")
-        image_path = (HISTORY_DIR / file_name).resolve()
-        if HISTORY_DIR.resolve() not in image_path.parents or not image_path.is_file():
-            raise HTTPException(status_code=404, detail="Data gambar laporan tidak ditemukan.")
         try:
-            image_data[image_name] = base64.b64encode(image_path.read_bytes()).decode("ascii")
-        except OSError as error:
-            raise HTTPException(
-                status_code=404,
-                detail="Data gambar laporan tidak dapat dibaca.",
-            ) from error
+            image_data[image_name] = base64.b64encode(
+                await read_record_image(record, image_name)
+            ).decode("ascii")
+        except FileNotFoundError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
 
     result = AnalysisResult(
         count=record["count"],
@@ -163,7 +162,7 @@ def download_history_report_pdf(record_id: str) -> Response:
         history_context={
             "file_name": record.get("file_name", "-"),
             "created_at": record.get("created_at", "-"),
-            "previous": get_previous_record(record_id),
+            "previous": await get_previous_record(record_id),
         },
     )
     safe_name = Path(record.get("file_name", "laporan-pendeteksian")).stem
@@ -181,24 +180,19 @@ def download_history_report_pdf(record_id: str) -> Response:
 
 
 @app.get("/api/history/{record_id}/image/{image_name}")
-def history_image(record_id: str, image_name: str) -> FileResponse:
-    record = get_record(record_id)
+async def history_image(record_id: str, image_name: str) -> Response:
+    record = await get_record(record_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Riwayat tidak ditemukan.")
 
     if image_name not in {"original", "annotated", "mask", "face_mask"}:
         raise HTTPException(status_code=404, detail="Gambar tidak ditemukan.")
 
-    file_name = record["files"].get(image_name)
-    if not file_name:
-        raise HTTPException(status_code=404, detail="Gambar tidak tersedia.")
-
-    image_path = (HISTORY_DIR / file_name).resolve()
-    if HISTORY_DIR.resolve() not in image_path.parents:
-        raise HTTPException(status_code=404, detail="Gambar tidak valid.")
-    if not image_path.is_file():
-        raise HTTPException(status_code=404, detail="Gambar tidak ditemukan.")
-    return FileResponse(image_path)
+    try:
+        image_bytes = await read_record_image(record, image_name)
+    except FileNotFoundError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    return Response(content=image_bytes, media_type="image/png")
 
 
 app.mount(

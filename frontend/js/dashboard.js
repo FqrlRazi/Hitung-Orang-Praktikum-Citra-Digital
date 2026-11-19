@@ -7,11 +7,26 @@ function escapeText(value) {
   return element.innerHTML;
 }
 
+async function readApiJson(response, fallbackMessage) {
+  const body = await response.text();
+  let data;
+  try {
+    data = JSON.parse(body);
+  } catch {
+    throw new Error(
+      response.ok
+        ? fallbackMessage
+        : `Server error (${response.status}). Periksa log deployment Vercel.`,
+    );
+  }
+  if (!response.ok) throw new Error(data.detail || fallbackMessage);
+  return data;
+}
+
 async function loadHistory() {
   try {
     const response = await fetch("/api/history?limit=100");
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.detail || "Gagal memuat riwayat.");
+    const data = await readApiJson(response, "Gagal memuat riwayat.");
 
     const records = data.records || [];
     const average = records.length

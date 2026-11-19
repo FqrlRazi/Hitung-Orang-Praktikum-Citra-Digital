@@ -68,6 +68,22 @@ function clearError() {
   errorMessage.classList.add("hidden");
 }
 
+async function readApiJson(response, fallbackMessage) {
+  const body = await response.text();
+  let data;
+  try {
+    data = JSON.parse(body);
+  } catch {
+    throw new Error(
+      response.ok
+        ? fallbackMessage
+        : `Server error (${response.status}). Periksa log deployment Vercel.`,
+    );
+  }
+  if (!response.ok) throw new Error(data.detail || fallbackMessage);
+  return data;
+}
+
 function selectFile(file) {
   clearError();
   if (!file) return;
@@ -134,12 +150,13 @@ analyzeButton.addEventListener("click", async () => {
 
   try {
     const response = await fetch("/api/analyze", { method: "POST", body: formData });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.detail || "Gagal memproses gambar.");
+    const data = await readApiJson(response, "Gagal memproses gambar.");
 
-    annotatedUrl = `data:image/png;base64,${data.annotated_image}`;
-    maskUrl = `data:image/png;base64,${data.mask_image}`;
-    faceMaskUrl = `data:image/png;base64,${data.face_mask_image}`;
+    const historyImageUrl = (imageName) =>
+      `/api/history/${encodeURIComponent(data.history_id)}/image/${imageName}`;
+    annotatedUrl = historyImageUrl("annotated");
+    maskUrl = historyImageUrl("mask");
+    faceMaskUrl = historyImageUrl("face_mask");
     resultImage.src = annotatedUrl;
     resultImage.classList.remove("hidden");
     resultPlaceholder.classList.add("hidden");
@@ -221,8 +238,7 @@ downloadButton.addEventListener("click", async () => {
       body: formData,
     });
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.detail || "Gagal membuat laporan PDF.");
+      await readApiJson(response, "Gagal membuat laporan PDF.");
     }
 
     const pdfBlob = await response.blob();

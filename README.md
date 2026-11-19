@@ -101,5 +101,14 @@ entrypoint = "backend.app.main:app"
 ```
 
 Dependency runtime juga dicantumkan pada bagian `[project].dependencies` di
-file tersebut agar Vercel memasang FastAPI, OpenCV, NumPy, dan ReportLab saat
-build. Frontend disajikan dari mount `StaticFiles` dengan `html=True`.
+file tersebut agar Vercel memasang FastAPI, OpenCV, NumPy, ReportLab, dan SDK
+Vercel Blob saat build. Frontend disajikan dari mount `StaticFiles` dengan
+`html=True`.
+
+Filesystem function Vercel tidak digunakan untuk menyimpan histori. Buat
+**private Blob store** dari tab Storage project Vercel, lalu hubungkan store ke
+project dan environment deployment. SDK memakai OIDC Vercel secara otomatis
+melalui `BLOB_STORE_ID`; jangan menaruh token rahasia di frontend atau source
+code. Upload gambar, metadata histori, dan laporan akan tersimpan di Blob.
+PDF histori dibuat saat diminta dari metadata dan citra yang tersimpan. Saat
+dijalankan lokal tanpa konfigurasi Blob, histori tetap disimpan di `data/history`.
