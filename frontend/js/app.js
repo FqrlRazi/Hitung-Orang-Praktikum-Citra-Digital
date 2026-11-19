@@ -152,11 +152,9 @@ analyzeButton.addEventListener("click", async () => {
     const response = await fetch("/api/analyze", { method: "POST", body: formData });
     const data = await readApiJson(response, "Gagal memproses gambar.");
 
-    const historyImageUrl = (imageName) =>
-      `/api/history/${encodeURIComponent(data.history_id)}/image/${imageName}`;
-    annotatedUrl = historyImageUrl("annotated");
-    maskUrl = historyImageUrl("mask");
-    faceMaskUrl = historyImageUrl("face_mask");
+    annotatedUrl = `data:image/png;base64,${data.annotated_image}`;
+    maskUrl = `data:image/png;base64,${data.mask_image}`;
+    faceMaskUrl = `data:image/png;base64,${data.face_mask_image}`;
     resultImage.src = annotatedUrl;
     resultImage.classList.remove("hidden");
     resultPlaceholder.classList.add("hidden");
