@@ -79,6 +79,14 @@ Setelah analisis berhasil, tombol **Unduh PDF** membuat file PDF berisi:
 - metode segmentasi dan deteksi;
 - warna latar perkiraan;
 - tabel nomor objek, bentuk kontur, ukuran, rasio aspek, dan sumber bentuk.
+- confidence deteksi wajah dan skor kecocokan bentuk kontur.
+
+## Dashboard dan histori
+
+Setiap analisis disimpan sebagai histori non-SQL dalam folder `data/history`.
+Dashboard tersedia di `http://127.0.0.1:8000/dashboard.html` dan menampilkan
+total analisis, rata-rata jumlah hasil, jumlah riwayat berbasis wajah, serta
+tampilan citra hasil terakhir.
 
 ## Deployment Vercel
 

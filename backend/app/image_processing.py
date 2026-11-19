@@ -41,6 +41,7 @@ class AnalysisResult:
     segmentation_method: str
     annotated_image: str
     mask_image: str
+    face_mask_image: str
     image_width: int
     image_height: int
     background_color: list[int]
@@ -144,17 +145,38 @@ def generate_report_pdf(result: AnalysisResult) -> bytes:
         Spacer(1, 5 * mm),
         Paragraph("Putih = foreground; hitam = latar.", styles["Normal"]),
         Spacer(1, 5 * mm),
+        PageBreak(),
+        Paragraph("2.1. Mask Kotak Wajah", styles["Section"]),
+    ])
+
+    face_mask = Image(
+        BytesIO(base64.b64decode(result.face_mask_image)),
+        width=170 * mm,
+        height=105 * mm,
+        kind="proportional",
+    )
+    story.extend([
+        face_mask,
+        Spacer(1, 5 * mm),
+        Paragraph(
+            "Putih = kotak hasil deteksi wajah YuNet; hitam = area di luar wajah.",
+            styles["Normal"],
+        ),
+        Spacer(1, 5 * mm),
         Paragraph("3. Tabel Analisis Kontur", styles["Section"]),
     ])
 
     reported = result.detections if result.detection_method == "wajah" else result.contour_detections
-    table_data = [["No.", "Bentuk", "Ukuran (px)", "Rasio aspek", "Sumber"]]
+    table_data = [["No.", "Bentuk", "Ukuran (px)", "Rasio aspek", "Skor analisis", "Sumber"]]
     for index, detection in enumerate(reported, start=1):
         table_data.append([
             str(index),
             str(detection.get("shape", "Tidak diketahui")),
             f"{detection.get('width', 0)} x {detection.get('height', 0)}",
             f"{float(detection.get('aspect_ratio', 0.0)): .2f}",
+            (
+                f"{float(detection.get('confidence', detection.get('shape_confidence', 0.0))):.1f}%"
+            ),
             str(detection.get("shape_source", "Analisis kontur")),
         ])
     if len(table_data) == 1:
@@ -199,7 +221,7 @@ def _border_pixels(image: np.ndarray) -> np.ndarray:
     )
 
 
-def _detect_faces(image: np.ndarray) -> list[tuple[int, int, int, int]]:
+def _detect_faces(image: np.ndarray) -> list[tuple[int, int, int, int, float]]:
     height, width = image.shape[:2]
     scale = min(1.0, 1200 / max(height, width))
     if scale < 1:
@@ -225,15 +247,20 @@ def _detect_faces(image: np.ndarray) -> list[tuple[int, int, int, int]]:
     _, faces = detector.detect(detection_image)
     if faces is None:
         return []
-    return [
-        (
-            round(x / scale),
-            round(y / scale),
-            round(face_width / scale),
-            round(face_height / scale),
+    detections = []
+    for face in faces:
+        x, y, face_width, face_height = face[:4]
+        confidence = float(face[14]) if face.size > 14 else 0.0
+        detections.append(
+            (
+                round(x / scale),
+                round(y / scale),
+                round(face_width / scale),
+                round(face_height / scale),
+                round(confidence * 100.0, 1),
+            )
         )
-        for x, y, face_width, face_height in faces[:, :4]
-    ]
+    return detections
 
 
 def _split_touching_components(mask: np.ndarray, min_area: float) -> np.ndarray:
@@ -360,7 +387,7 @@ def _analyze_face_contour(
     y: int,
     face_width: int,
     face_height: int,
-) -> tuple[str, float, float]:
+) -> tuple[str, float, float, float]:
     height, width = image.shape[:2]
     padding_x = max(2, round(face_width * 0.10))
     padding_y = max(2, round(face_height * 0.10))
@@ -370,7 +397,7 @@ def _analyze_face_contour(
     bottom = min(height, y + face_height + padding_y)
     crop = image[top:bottom, left:right]
     if crop.size == 0:
-        return "Tidak terdeteksi", 0.0, 0.0
+        return "Tidak terdeteksi", 0.0, 0.0, 0.0
 
     crop_height, crop_width = crop.shape[:2]
     yy, xx = np.ogrid[:crop_height, :crop_width]
@@ -399,13 +426,13 @@ def _analyze_face_contour(
         cv2.CHAIN_APPROX_SIMPLE,
     )
     if not contours:
-        return "Tidak terdeteksi", 0.0, 0.0
+        return "Tidak terdeteksi", 0.0, 0.0, 0.0
 
     face_contour = max(contours, key=cv2.contourArea)
     contour_area = cv2.contourArea(face_contour)
     minimum_area = face_width * face_height * 0.08
     if contour_area < minimum_area or len(face_contour) < 5:
-        return "Tidak terdeteksi", 0.0, 0.0
+        return "Tidak terdeteksi", 0.0, 0.0, 0.0
 
     ellipse = cv2.fitEllipse(face_contour)
     ellipse_width, ellipse_height = ellipse[1]
@@ -472,7 +499,16 @@ def _analyze_face_contour(
     else:
         shape = "Mendatar"
 
-    return shape, circularity, face_ratio
+    shape_confidence = max(
+        0.0,
+        min(
+            100.0,
+            (circularity * 55.0)
+            + (solidity * 30.0)
+            + (15.0 if 0.78 <= aspect <= 1.20 else 0.0),
+        ),
+    )
+    return shape, circularity, face_ratio, round(shape_confidence, 1)
 
 
 def _classify_face_box(width: int, height: int) -> str:
@@ -495,11 +531,11 @@ def _classify_face_box(width: int, height: int) -> str:
     return "Tidak diketahui"
 
 
-def _analyze_contour_shape(contour: np.ndarray) -> tuple[str, float, float]:
+def _analyze_contour_shape(contour: np.ndarray) -> tuple[str, float, float, float]:
     area = cv2.contourArea(contour)
     perimeter = cv2.arcLength(contour, True)
     if perimeter <= 0:
-        return "Tidak diketahui", 0.0, 0.0
+        return "Tidak diketahui", 0.0, 0.0, 0.0
 
     circularity = float(4 * np.pi * area / (perimeter * perimeter))
     x, y, width, height = cv2.boundingRect(contour)
@@ -533,7 +569,16 @@ def _analyze_contour_shape(contour: np.ndarray) -> tuple[str, float, float]:
         shape = "Mendatar"
     else:
         shape = "Tegak"
-    return shape, circularity, aspect_ratio
+    shape_confidence = max(
+        0.0,
+        min(
+            100.0,
+            (ellipse_roundness * 35.0)
+            + (contour_occupancy * 35.0)
+            + (circularity * 30.0),
+        ),
+    )
+    return shape, circularity, aspect_ratio, round(shape_confidence, 1)
 
 
 def analyze_image(
@@ -587,7 +632,7 @@ def analyze_image(
         if area < min_area:
             continue
         x, y, box_width, box_height = cv2.boundingRect(contour)
-        shape, circularity, aspect_ratio = _analyze_contour_shape(contour)
+        shape, circularity, aspect_ratio, shape_confidence = _analyze_contour_shape(contour)
         detections.append(
             {
                 "x": x,
@@ -598,6 +643,7 @@ def analyze_image(
                 "shape": shape,
                 "circularity": round(circularity, 3),
                 "aspect_ratio": round(aspect_ratio, 3),
+                "shape_confidence": shape_confidence,
                 "shape_source": "Kontur segmentasi latar",
             }
         )
@@ -607,10 +653,20 @@ def analyze_image(
 
     detection_method = "kontur"
     faces = _detect_faces(image)
+    face_mask = np.zeros((height, width), dtype=np.uint8)
+    for x, y, face_width, face_height, confidence in faces:
+        cv2.rectangle(
+            face_mask,
+            (x, y),
+            (x + face_width, y + face_height),
+            255,
+            thickness=-1,
+        )
+
     if faces and len(faces) >= 2:
         detections = []
-        for x, y, face_width, face_height in faces:
-            shape, circularity, face_ratio = _analyze_face_contour(
+        for x, y, face_width, face_height, confidence in faces:
+            shape, circularity, face_ratio, shape_confidence = _analyze_face_contour(
                 image, x, y, face_width, face_height
             )
             detections.append(
@@ -623,6 +679,8 @@ def analyze_image(
                     "shape": shape,
                     "circularity": round(circularity, 3),
                     "aspect_ratio": round(face_ratio, 3),
+                    "confidence": confidence,
+                    "shape_confidence": shape_confidence,
                     "shape_source": "Kontur piksel area wajah",
                 }
             )
@@ -659,6 +717,7 @@ def analyze_image(
         segmentation_method="Threshold perbedaan warna CIELAB + Gaussian blur + opening/closing",
         annotated_image=_encode_image(annotated),
         mask_image=_encode_image(mask),
+        face_mask_image=_encode_image(face_mask),
         image_width=width,
         image_height=height,
         background_color=[int(channel) for channel in background_color[::-1]],

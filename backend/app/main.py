@@ -1,8 +1,12 @@
+from pathlib import Path
+
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from .image_processing import analyze_image, generate_report_pdf
+from .history_store import HISTORY_DIR, get_record, list_records, save_record
 
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
@@ -43,17 +47,21 @@ async def analyze_upload(
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
 
+    record = save_record(file.filename or "gambar-tanpa-nama", result, image_bytes)
+
     return {
         "count": result.count,
         "detection_method": result.detection_method,
         "segmentation_method": result.segmentation_method,
         "annotated_image": result.annotated_image,
         "mask_image": result.mask_image,
+        "face_mask_image": result.face_mask_image,
         "image_width": result.image_width,
         "image_height": result.image_height,
         "background_color": result.background_color,
         "detections": result.detections,
         "contour_detections": result.contour_detections,
+        "history_id": record["id"],
     }
 
 
@@ -94,6 +102,40 @@ async def download_report_pdf(
             "Content-Disposition": f'attachment; filename="laporan-{safe_name}.pdf"',
         },
     )
+
+
+@app.get("/api/history")
+def history_list(limit: int = 100) -> dict:
+    return {"records": list_records(limit)}
+
+
+@app.get("/api/history/{record_id}")
+def history_detail(record_id: str) -> dict:
+    record = get_record(record_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Riwayat tidak ditemukan.")
+    return record
+
+
+@app.get("/api/history/{record_id}/image/{image_name}")
+def history_image(record_id: str, image_name: str) -> FileResponse:
+    record = get_record(record_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Riwayat tidak ditemukan.")
+
+    if image_name not in {"original", "annotated", "mask", "face_mask"}:
+        raise HTTPException(status_code=404, detail="Gambar tidak ditemukan.")
+
+    file_name = record["files"].get(image_name)
+    if not file_name:
+        raise HTTPException(status_code=404, detail="Gambar tidak tersedia.")
+
+    image_path = (HISTORY_DIR / file_name).resolve()
+    if HISTORY_DIR.resolve() not in image_path.parents:
+        raise HTTPException(status_code=404, detail="Gambar tidak valid.")
+    if not image_path.is_file():
+        raise HTTPException(status_code=404, detail="Gambar tidak ditemukan.")
+    return FileResponse(image_path)
 
 
 app.mount(

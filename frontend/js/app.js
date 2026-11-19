@@ -21,6 +21,8 @@ const maskImage = document.querySelector("#mask-image");
 const viewTabs = document.querySelector("#view-tabs");
 const detectionTab = document.querySelector("#detection-tab");
 const maskTab = document.querySelector("#mask-tab");
+const faceMaskTab = document.querySelector("#face-mask-tab");
+const faceMaskImage = document.querySelector("#face-mask-image");
 const visualNote = document.querySelector("#visual-note");
 const downloadButton = document.querySelector("#download-button");
 const analysisReport = document.querySelector("#analysis-report");
@@ -35,17 +37,24 @@ let selectedFile = null;
 let previewUrl = null;
 let annotatedUrl = null;
 let maskUrl = null;
+let faceMaskUrl = null;
 
 function showVisualization(view) {
   const showingDetection = view === "detection";
+  const showingFaceMask = view === "face-mask";
   resultImage.classList.toggle("hidden", !showingDetection);
-  maskImage.classList.toggle("hidden", showingDetection);
+  maskImage.classList.toggle("hidden", view !== "mask");
+  faceMaskImage.classList.toggle("hidden", !showingFaceMask);
   detectionTab.setAttribute("aria-pressed", String(showingDetection));
-  maskTab.setAttribute("aria-pressed", String(!showingDetection));
-  visualNote.classList.toggle("hidden", showingDetection);
-  if (!showingDetection) {
+  maskTab.setAttribute("aria-pressed", String(view === "mask"));
+  faceMaskTab.setAttribute("aria-pressed", String(showingFaceMask));
+  visualNote.classList.toggle("hidden", view === "detection");
+  if (view === "mask") {
     visualNote.textContent =
       "Ini mask foreground dari segmentasi warna: putih = area yang berbeda dari latar, hitam = area yang dianggap latar. Mask ini bukan segmentasi wajah dan tidak menentukan kotak deteksi wajah.";
+  } else if (showingFaceMask) {
+    visualNote.textContent =
+      "Ini mask kotak wajah: area putih berasal dari kotak deteksi wajah YuNet dan area hitam berada di luar kotak wajah.";
   }
 }
 
@@ -130,10 +139,12 @@ analyzeButton.addEventListener("click", async () => {
 
     annotatedUrl = `data:image/png;base64,${data.annotated_image}`;
     maskUrl = `data:image/png;base64,${data.mask_image}`;
+    faceMaskUrl = `data:image/png;base64,${data.face_mask_image}`;
     resultImage.src = annotatedUrl;
     resultImage.classList.remove("hidden");
     resultPlaceholder.classList.add("hidden");
     maskImage.src = maskUrl;
+    faceMaskImage.src = faceMaskUrl;
     viewTabs.classList.remove("hidden");
     viewTabs.classList.add("flex");
     const usesFaceDetection = data.detection_method === "wajah";
@@ -170,7 +181,11 @@ analyzeButton.addEventListener("click", async () => {
         const shape = detection.shape || "Tidak diketahui";
         const aspectRatio = Number(detection.aspect_ratio || 0).toFixed(2);
         const shapeSource = detection.shape_source || "Analisis kontur";
-        return `<tr class="border-t border-black/5"><td class="py-3 pr-4 font-semibold">#${index + 1}</td><td class="py-3 pr-4">${shape}</td><td class="py-3 pr-4">${detection.width} × ${detection.height} px</td><td class="py-3 text-black/55">rasio aspek ${aspectRatio}<br><span class="text-[11px]">${shapeSource}</span></td></tr>`;
+        const confidence = Number(detection.confidence ?? detection.shape_confidence ?? 0).toFixed(1);
+        const confidenceLabel = detection.confidence !== undefined
+          ? "confidence wajah"
+          : "kecocokan bentuk";
+        return `<tr class="border-t border-black/5"><td class="py-3 pr-4 font-semibold">#${index + 1}</td><td class="py-3 pr-4">${shape}</td><td class="py-3 pr-4">${detection.width} × ${detection.height} px</td><td class="py-3 text-black/55">rasio aspek ${aspectRatio}<br><span class="text-[11px]">${confidenceLabel} ${confidence}%</span><br><span class="text-[11px]">${shapeSource}</span></td></tr>`;
       })
       .join("");
     reportConclusion.textContent = usesFaceDetection
@@ -188,6 +203,7 @@ analyzeButton.addEventListener("click", async () => {
 
 detectionTab.addEventListener("click", () => showVisualization("detection"));
 maskTab.addEventListener("click", () => showVisualization("mask"));
+faceMaskTab.addEventListener("click", () => showVisualization("face-mask"));
 
 downloadButton.addEventListener("click", async () => {
   if (!selectedFile) return;

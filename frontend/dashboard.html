@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard Riwayat — Hitung Orang</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-[#f6f7f2] font-sans text-[#17221f]">
+    <header class="border-b border-black/5 bg-white">
+      <div class="mx-auto flex max-w-7xl items-center justify-between px-5 py-5">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-[0.18em] text-[#1d5948]">Histori analisis</p>
+          <h1 class="mt-1 text-xl font-bold">Dashboard Hitung Orang</h1>
+        </div>
+        <a class="rounded-lg bg-[#1d5948] px-4 py-2 text-sm font-semibold text-white" href="/">Analisis baru</a>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-7xl px-5 py-8">
+      <section class="grid gap-4 sm:grid-cols-3">
+        <div class="rounded-2xl bg-white p-5">
+          <p class="text-sm text-black/45">Total analisis</p>
+          <p id="total-records" class="mt-2 text-3xl font-bold">—</p>
+        </div>
+        <div class="rounded-2xl bg-white p-5">
+          <p class="text-sm text-black/45">Rata-rata hasil</p>
+          <p id="average-count" class="mt-2 text-3xl font-bold">—</p>
+        </div>
+        <div class="rounded-2xl bg-white p-5">
+          <p class="text-sm text-black/45">Analisis wajah terbanyak</p>
+          <p id="face-records" class="mt-2 text-3xl font-bold">—</p>
+        </div>
+      </section>
+
+      <section class="mt-6 overflow-hidden rounded-2xl bg-white">
+        <div class="border-b border-black/5 px-5 py-4">
+          <h2 class="font-bold">Riwayat pendeteksian</h2>
+        </div>
+        <div id="history-list" class="divide-y divide-black/5"></div>
+      </section>
+
+      <p id="history-error" class="mt-4 hidden rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700"></p>
+    </main>
+
+    <script src="/js/dashboard.js" defer></script>
+  </body>
+</html>
