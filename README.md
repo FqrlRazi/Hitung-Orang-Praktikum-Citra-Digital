@@ -1,22 +1,37 @@
 # Hitung Orang dari Citra
 
-Demo penghitungan objek pada foto dengan latar terkendali menggunakan Python,
-OpenCV, FastAPI, HTML, Tailwind CSS, dan JavaScript.
+Aplikasi web penghitungan orang/wajah pada citra menggunakan segmentasi warna,
+morfologi, analisis kontur, dan deteksi wajah YuNet.
 
-## Struktur
+## Teknologi
+
+- Python 3.12
+- OpenCV dan NumPy
+- FastAPI
+- HTML, JavaScript, dan Tailwind CSS
+- ReportLab
+- Vercel Blob
+
+## Struktur Project
 
 ```text
 projectAkhir/
 ├── backend/
-│   ├── models/face_detection_yunet_2023mar.onnx
+│   ├── models/
+│   │   └── face_detection_yunet_2023mar.onnx
 │   └── app/
 │       ├── __init__.py
+│       ├── history_store.py
 │       ├── image_processing.py
 │       └── main.py
 ├── frontend/
-│   ├── css/style.css
-│   ├── js/app.js
+│   ├── css/
+│   ├── js/
+│   ├── dashboard.html
 │   └── index.html
+├── data/
+│   └── history/
+├── pyproject.toml
 └── requirements.txt
 ```
 
