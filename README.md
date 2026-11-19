@@ -86,7 +86,10 @@ Setelah analisis berhasil, tombol **Unduh PDF** membuat file PDF berisi:
 Setiap analisis disimpan sebagai histori non-SQL dalam folder `data/history`.
 Dashboard tersedia di `http://127.0.0.1:8000/dashboard.html` dan menampilkan
 total analisis, rata-rata jumlah hasil, jumlah riwayat berbasis wajah, serta
-tampilan citra hasil terakhir.
+tautan PDF untuk tiap record. PDF histori menyertakan rata-rata confidence wajah
+atau skor kecocokan bentuk, perbandingan dengan record sebelumnya yang memakai
+metode sama, dan citra hasil. Perbandingan skor antarcitra bukan ukuran akurasi
+model karena isi dan kualitas citra dapat berbeda.
 
 ## Deployment Vercel
 

@@ -96,3 +96,18 @@ def get_record(record_id: str) -> dict[str, Any] | None:
         (record for record in _read_records() if record["id"] == record_id),
         None,
     )
+
+
+def get_previous_record(record_id: str) -> dict[str, Any] | None:
+    records = _read_records()
+    for index, record in enumerate(records):
+        if record["id"] == record_id:
+            return next(
+                (
+                    previous
+                    for previous in records[index + 1 :]
+                    if previous.get("detection_method") == record.get("detection_method")
+                ),
+                None,
+            )
+    return None

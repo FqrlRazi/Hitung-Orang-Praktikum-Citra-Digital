@@ -4,6 +4,7 @@ import base64
 from io import BytesIO
 from dataclasses import dataclass
 from pathlib import Path
+from xml.sax.saxutils import escape
 
 import cv2
 import numpy as np
@@ -56,7 +57,10 @@ def _encode_image(image: np.ndarray) -> str:
     return base64.b64encode(encoded.tobytes()).decode("ascii")
 
 
-def generate_report_pdf(result: AnalysisResult) -> bytes:
+def generate_report_pdf(
+    result: AnalysisResult,
+    history_context: dict[str, object] | None = None,
+) -> bytes:
     pdf_buffer = BytesIO()
     document = SimpleDocTemplate(
         pdf_buffer,
@@ -89,6 +93,23 @@ def generate_report_pdf(result: AnalysisResult) -> bytes:
             spaceAfter=5,
         )
     )
+    styles.add(
+        ParagraphStyle(
+            name="HistoryLabel",
+            parent=styles["Normal"],
+            fontName="Helvetica-Bold",
+            fontSize=9,
+            leading=11,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="HistoryValue",
+            parent=styles["Normal"],
+            fontSize=9,
+            leading=11,
+        )
+    )
 
     story = [
         Paragraph("Laporan Hasil Pendeteksian Sistem", styles["ReportTitle"]),
@@ -117,10 +138,106 @@ def generate_report_pdf(result: AnalysisResult) -> bytes:
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
             ]),
         ),
-        Spacer(1, 7 * mm),
-        Paragraph("1. Citra Hasil Deteksi", styles["Section"]),
     ]
 
+    if history_context is not None:
+        score_key = "confidence" if result.detection_method == "wajah" else "shape_confidence"
+        score_label = (
+            "Rata-rata confidence deteksi wajah"
+            if result.detection_method == "wajah"
+            else "Rata-rata skor kecocokan bentuk"
+        )
+        detections = result.detections if result.detection_method == "wajah" else result.contour_detections
+        scores = [
+            float(detection[score_key])
+            for detection in detections
+            if detection.get(score_key) is not None
+        ]
+        average_score = sum(scores) / len(scores) if scores else None
+        previous_record = history_context.get("previous")
+        comparison = "Belum ada record sebelumnya dengan metode yang sama."
+        if isinstance(previous_record, dict):
+            previous_detections = (
+                previous_record.get("detections", [])
+                if result.detection_method == "wajah"
+                else previous_record.get("contour_detections", [])
+            )
+            previous_scores = [
+                float(detection[score_key])
+                for detection in previous_detections
+                if detection.get(score_key) is not None
+            ]
+            if average_score is not None and previous_scores:
+                previous_average = sum(previous_scores) / len(previous_scores)
+                difference = round(average_score - previous_average, 1)
+                if difference > 0:
+                    trend = "meningkat"
+                elif difference < 0:
+                    trend = "menurun"
+                else:
+                    trend = "stagnan"
+                comparison = (
+                    f"{trend.capitalize()} {difference:+.1f} poin dibanding "
+                    f"{previous_record.get('file_name', 'record sebelumnya')} "
+                    f"({previous_average:.1f}%)."
+                )
+            else:
+                comparison = "Skor tidak tersedia pada record pembanding."
+
+        story.extend([
+            Spacer(1, 5 * mm),
+            Paragraph("Ringkasan Confidence Record", styles["Section"]),
+            Table(
+                [
+                    [
+                        Paragraph("Nama file", styles["HistoryLabel"]),
+                        Paragraph(escape(str(history_context.get("file_name", "-"))), styles["HistoryValue"]),
+                    ],
+                    [
+                        Paragraph("Waktu analisis", styles["HistoryLabel"]),
+                        Paragraph(escape(str(history_context.get("created_at", "-"))), styles["HistoryValue"]),
+                    ],
+                    [
+                        Paragraph(score_label, styles["HistoryLabel"]),
+                        Paragraph(
+                            f"{average_score:.1f}%" if average_score is not None else "Tidak tersedia",
+                            styles["HistoryValue"],
+                        ),
+                    ],
+                    [
+                        Paragraph("Perbandingan", styles["HistoryLabel"]),
+                        Paragraph(escape(comparison), styles["HistoryValue"]),
+                    ],
+                    [
+                        Paragraph("Catatan", styles["HistoryLabel"]),
+                        Paragraph(
+                            "Skor adalah rata-rata hasil deteksi pada citra ini, bukan ukuran "
+                            "akurasi model. Perbedaan isi dan kualitas citra dapat memengaruhi skor.",
+                            styles["HistoryValue"],
+                        ),
+                    ],
+                ],
+                colWidths=[52 * mm, 128 * mm],
+                style=TableStyle([
+                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#f6f7f2")),
+                    ("TEXTCOLOR", (0, 0), (-1, -1), colors.HexColor("#17221f")),
+                    ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                    ("FONTNAME", (1, 0), (1, -1), "Helvetica"),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#d7ddd8")),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("TOPPADDING", (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                ]),
+            ),
+        ])
+
+    story.extend([
+        Spacer(1, 7 * mm),
+        Paragraph("1. Citra Hasil Deteksi", styles["Section"]),
+    ])
     annotated = Image(
         BytesIO(base64.b64decode(result.annotated_image)),
         width=170 * mm,
@@ -180,12 +297,12 @@ def generate_report_pdf(result: AnalysisResult) -> bytes:
             str(detection.get("shape_source", "Analisis kontur")),
         ])
     if len(table_data) == 1:
-        table_data.append(["-", "Tidak ada kontur lolos", "-", "-", "-"])
+        table_data.append(["-", "Tidak ada kontur lolos", "-", "-", "-", "-"])
 
     table = Table(
         table_data,
         repeatRows=1,
-        colWidths=[10 * mm, 35 * mm, 30 * mm, 25 * mm, 73 * mm],
+        colWidths=[9 * mm, 31 * mm, 26 * mm, 22 * mm, 25 * mm, 67 * mm],
         style=TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1d5948")),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),

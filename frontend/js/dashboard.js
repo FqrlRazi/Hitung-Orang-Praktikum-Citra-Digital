@@ -44,7 +44,7 @@ async function loadHistory() {
             <p class="mt-1 text-xs text-black/45">${escapeText(dateText)} · ${escapeText(method)}</p>
             <p class="mt-2 text-sm">${record.count} hasil · ${record.image_width} × ${record.image_height} piksel</p>
           </div>
-          <a class="rounded-lg border border-[#1d5948]/20 px-3 py-2 text-center text-xs font-semibold text-[#1d5948]" href="/api/history/${encodeURIComponent(record.id)}/image/annotated" target="_blank">Lihat citra</a>
+          <a class="rounded-lg border border-[#1d5948]/20 px-3 py-2 text-center text-xs font-semibold text-[#1d5948]" href="/api/history/${encodeURIComponent(record.id)}/report/pdf">Unduh PDF</a>
         </article>
       `;
     }).join("");

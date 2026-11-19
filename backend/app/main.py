@@ -1,12 +1,18 @@
+import base64
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
 
-from .image_processing import analyze_image, generate_report_pdf
-from .history_store import HISTORY_DIR, get_record, list_records, save_record
+from .image_processing import AnalysisResult, analyze_image, generate_report_pdf
+from .history_store import (
+    HISTORY_DIR,
+    get_previous_record,
+    get_record,
+    list_records,
+    save_record,
+)
 
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
@@ -115,6 +121,63 @@ def history_detail(record_id: str) -> dict:
     if record is None:
         raise HTTPException(status_code=404, detail="Riwayat tidak ditemukan.")
     return record
+
+
+@app.get("/api/history/{record_id}/report/pdf")
+def download_history_report_pdf(record_id: str) -> Response:
+    record = get_record(record_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Riwayat tidak ditemukan.")
+
+    image_data = {}
+    for image_name in ("annotated", "mask", "face_mask"):
+        file_name = record.get("files", {}).get(image_name)
+        if not file_name:
+            raise HTTPException(status_code=404, detail="Data gambar laporan tidak tersedia.")
+        image_path = (HISTORY_DIR / file_name).resolve()
+        if HISTORY_DIR.resolve() not in image_path.parents or not image_path.is_file():
+            raise HTTPException(status_code=404, detail="Data gambar laporan tidak ditemukan.")
+        try:
+            image_data[image_name] = base64.b64encode(image_path.read_bytes()).decode("ascii")
+        except OSError as error:
+            raise HTTPException(
+                status_code=404,
+                detail="Data gambar laporan tidak dapat dibaca.",
+            ) from error
+
+    result = AnalysisResult(
+        count=record["count"],
+        detection_method=record["detection_method"],
+        segmentation_method=record["segmentation_method"],
+        annotated_image=image_data["annotated"],
+        mask_image=image_data["mask"],
+        face_mask_image=image_data["face_mask"],
+        image_width=record["image_width"],
+        image_height=record["image_height"],
+        background_color=record["background_color"],
+        detections=record.get("detections", []),
+        contour_detections=record.get("contour_detections", []),
+    )
+    pdf_bytes = generate_report_pdf(
+        result,
+        history_context={
+            "file_name": record.get("file_name", "-"),
+            "created_at": record.get("created_at", "-"),
+            "previous": get_previous_record(record_id),
+        },
+    )
+    safe_name = Path(record.get("file_name", "laporan-pendeteksian")).stem
+    safe_name = "".join(
+        character if character.isalnum() or character in ("-", "_") else "_"
+        for character in safe_name
+    )
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="laporan-{safe_name}.pdf"',
+        },
+    )
 
 
 @app.get("/api/history/{record_id}/image/{image_name}")

@@ -1,5 +1,194 @@
 [
   {
+    "id": "20261119_150009_956afc76",
+    "created_at": "2026-11-19T15:00:09.455226+00:00",
+    "file_name": "WhatsApp Image 2026-11-11 at 10.13.25 PM.jpeg",
+    "count": 8,
+    "detection_method": "wajah",
+    "segmentation_method": "Threshold perbedaan warna CIELAB + Gaussian blur + opening/closing",
+    "image_width": 720,
+    "image_height": 1280,
+    "background_color": [
+      196,
+      178,
+      146
+    ],
+    "detections": [
+      {
+        "x": 150,
+        "y": 576,
+        "width": 42,
+        "height": 51,
+        "area": 2142.0,
+        "shape": "Segi enam",
+        "circularity": 0.824,
+        "aspect_ratio": 0.865,
+        "confidence": 93.6,
+        "shape_confidence": 89.5,
+        "shape_source": "Kontur piksel area wajah"
+      },
+      {
+        "x": 229,
+        "y": 669,
+        "width": 39,
+        "height": 49,
+        "area": 1911.0,
+        "shape": "Oval",
+        "circularity": 0.798,
+        "aspect_ratio": 0.79,
+        "confidence": 88.5,
+        "shape_confidence": 87.9,
+        "shape_source": "Kontur piksel area wajah"
+      },
+      {
+        "x": 308,
+        "y": 610,
+        "width": 36,
+        "height": 42,
+        "area": 1512.0,
+        "shape": "Segi enam",
+        "circularity": 0.797,
+        "aspect_ratio": 0.939,
+        "confidence": 94.4,
+        "shape_confidence": 87.7,
+        "shape_source": "Kontur piksel area wajah"
+      },
+      {
+        "x": 365,
+        "y": 587,
+        "width": 32,
+        "height": 39,
+        "area": 1248.0,
+        "shape": "Bulat",
+        "circularity": 0.82,
+        "aspect_ratio": 0.923,
+        "confidence": 92.1,
+        "shape_confidence": 89.3,
+        "shape_source": "Kontur piksel area wajah"
+      },
+      {
+        "x": 377,
+        "y": 712,
+        "width": 42,
+        "height": 52,
+        "area": 2184.0,
+        "shape": "Bulat",
+        "circularity": 0.844,
+        "aspect_ratio": 0.813,
+        "confidence": 93.2,
+        "shape_confidence": 90.8,
+        "shape_source": "Kontur piksel area wajah"
+      },
+      {
+        "x": 419,
+        "y": 604,
+        "width": 34,
+        "height": 44,
+        "area": 1496.0,
+        "shape": "Oval",
+        "circularity": 0.774,
+        "aspect_ratio": 0.787,
+        "confidence": 94.7,
+        "shape_confidence": 86.2,
+        "shape_source": "Kontur piksel area wajah"
+      },
+      {
+        "x": 481,
+        "y": 666,
+        "width": 42,
+        "height": 49,
+        "area": 2058.0,
+        "shape": "Segi enam",
+        "circularity": 0.788,
+        "aspect_ratio": 0.642,
+        "confidence": 91.5,
+        "shape_confidence": 87.5,
+        "shape_source": "Kontur piksel area wajah"
+      },
+      {
+        "x": 540,
+        "y": 599,
+        "width": 35,
+        "height": 41,
+        "area": 1435.0,
+        "shape": "Oval",
+        "circularity": 0.784,
+        "aspect_ratio": 0.925,
+        "confidence": 92.3,
+        "shape_confidence": 86.7,
+        "shape_source": "Kontur piksel area wajah"
+      }
+    ],
+    "contour_detections": [
+      {
+        "x": 0,
+        "y": 442,
+        "width": 720,
+        "height": 838,
+        "area": 476617.5,
+        "shape": "Kotak",
+        "circularity": 0.153,
+        "aspect_ratio": 0.859,
+        "shape_confidence": 64.3,
+        "shape_source": "Kontur segmentasi latar"
+      },
+      {
+        "x": 0,
+        "y": 125,
+        "width": 305,
+        "height": 79,
+        "area": 13819.5,
+        "shape": "Segi lima",
+        "circularity": 0.198,
+        "aspect_ratio": 3.861,
+        "shape_confidence": 53.2,
+        "shape_source": "Kontur segmentasi latar"
+      },
+      {
+        "x": 12,
+        "y": 207,
+        "width": 293,
+        "height": 284,
+        "area": 45095.0,
+        "shape": "Lonjong",
+        "circularity": 0.34,
+        "aspect_ratio": 1.032,
+        "shape_confidence": 55.9,
+        "shape_source": "Kontur segmentasi latar"
+      },
+      {
+        "x": 366,
+        "y": 140,
+        "width": 251,
+        "height": 244,
+        "area": 51168.0,
+        "shape": "Segi enam",
+        "circularity": 0.285,
+        "aspect_ratio": 1.029,
+        "shape_confidence": 65.7,
+        "shape_source": "Kontur segmentasi latar"
+      },
+      {
+        "x": 665,
+        "y": 0,
+        "width": 55,
+        "height": 383,
+        "area": 11463.5,
+        "shape": "Tegak",
+        "circularity": 0.158,
+        "aspect_ratio": 0.144,
+        "shape_confidence": 51.2,
+        "shape_source": "Kontur segmentasi latar"
+      }
+    ],
+    "files": {
+      "original": "20261119_150009_956afc76_original.png",
+      "annotated": "20261119_150009_956afc76_annotated.png",
+      "mask": "20261119_150009_956afc76_mask.png",
+      "face_mask": "20261119_150009_956afc76_face_mask.png"
+    }
+  },
+  {
     "id": "20261119_145504_5d80bbb7",
     "created_at": "2026-11-19T14:55:04.653240+00:00",
     "file_name": "test.jpeg",
